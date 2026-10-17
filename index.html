@@ -97,6 +97,7 @@ td.c,th.c{text-align:center}
     <div class="bar" style="justify-content:center">
       <button class="btn" id="camBtn">Mulai scan</button>
       <button class="btn ghost" id="simBtn">Simulasi scan</button>
+      <button class="btn ghost" id="resetSes">Reset sesi ini</button>
     </div>
     <div id="result"><span class="mut">Arahkan kamera ke kartu QR siswa.</span></div>
     <p class="mut" id="scanStat" style="text-align:center"></p>
@@ -144,7 +145,7 @@ td.c,th.c{text-align:center}
       <button class="btn" type="submit">Tambah</button>
     </form>
     <div id="sw-list" style="margin-top:10px"></div>
-    <div class="bar"><button class="btn danger" id="resetBtn">Reset data demo</button></div>
+    <div class="bar"><button class="btn ghost" id="resetAbs">Reset semua kehadiran</button><button class="btn danger" id="resetBtn">Reset data demo</button></div>
   </div>
 </section>
 
@@ -283,31 +284,53 @@ function handleToken(txt){
   setStatus(st,s,'H','scan');
   box.className='ok';box.innerHTML=`<div class="nm">${esc(st.nama)}</div>Kelas ${esc(st.kelas)} · <span class="pill H">Hadir</span>`;beep(true);updScanStat();
 }
-async function startCam(){
+let camBusy=false,camGen=0,watch=0;
+async function openStream(){
+  const tries=[{video:{facingMode:{ideal:'environment'},width:{ideal:640}},audio:false},{video:true,audio:false}];
+  let err;for(const c of tries){try{return await navigator.mediaDevices.getUserMedia(c)}catch(e){err=e;if(e.name==='NotAllowedError')break}}
+  throw err;
+}
+async function startCam(retry){
+  if(camBusy||stream)return;
+  camBusy=true;const gen=++camGen;
+  $('#camBtn').textContent='Membuka kamera…';
   try{
     await load(L.jsqr);
-    stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'},width:{ideal:640}},audio:false});
-  }catch(e){toast('Kamera tidak bisa dibuka: '+(e.message||e.name));return}
-  const v=$('#vid');v.srcObject=stream;await v.play();
-  $('#camoff').style.display='none';$('#camBtn').textContent='Berhenti';
-  const c=document.createElement('canvas');ctx2d=c.getContext('2d',{willReadFrequently:true});
-  let t0=0;
-  const tick=t=>{
+    const st=await openStream();
+    if(gen!==camGen){st.getTracks().forEach(t=>t.stop());return}
+    stream=st;
+    st.getTracks().forEach(t=>t.onended=()=>{if(stream===st){stopCam();toast('Kamera terputus. Tekan Mulai scan lagi.')}});
+    const v=$('#vid');v.srcObject=st;
+    try{await v.play()}catch(e){}
+    $('#camoff').style.display='none';$('#camBtn').textContent='Berhenti';
+    const c=document.createElement('canvas');ctx2d=c.getContext('2d',{willReadFrequently:true});
+    let t0=0;
+    const tick=t=>{
+      raf=requestAnimationFrame(tick);
+      if(t-t0<120||v.readyState<2||!v.videoWidth)return;t0=t;
+      const w=c.width=v.videoWidth/1.5|0,h=c.height=v.videoHeight/1.5|0;
+      ctx2d.drawImage(v,0,0,w,h);
+      const r=jsQR(ctx2d.getImageData(0,0,w,h).data,w,h,{inversionAttempts:'dontInvert'});
+      if(r&&r.data){const n=Date.now();if(r.data!==lastTok||n-lastAt>3000){lastTok=r.data;lastAt=n;handleToken(r.data)}}
+    };
     raf=requestAnimationFrame(tick);
-    if(t-t0<120||v.readyState<2)return;t0=t;
-    const w=c.width=v.videoWidth/1.5|0,h=c.height=v.videoHeight/1.5|0;
-    ctx2d.drawImage(v,0,0,w,h);
-    const r=jsQR(ctx2d.getImageData(0,0,w,h).data,w,h,{inversionAttempts:'dontInvert'});
-    if(r&&r.data){const n=Date.now();if(r.data!==lastTok||n-lastAt>3000){lastTok=r.data;lastAt=n;handleToken(r.data)}}
-  };
-  raf=requestAnimationFrame(tick);
+    // jaga-jaga: kamera terbuka tapi gambar tidak masuk (layar hitam) → buka ulang sekali
+    clearTimeout(watch);
+    watch=setTimeout(()=>{if(stream===st&&(!v.videoWidth||v.readyState<2)){stopCam();if(!retry){toast('Gambar kamera kosong, mencoba lagi…');startCam(true)}else toast('Kamera tidak menampilkan gambar. Tutup aplikasi lain yang memakai kamera, lalu coba lagi.')}},3500);
+  }catch(e){
+    $('#camBtn').textContent='Mulai scan';
+    toast(e.name==='NotAllowedError'?'Izin kamera ditolak. Aktifkan di pengaturan situs.':'Kamera tidak bisa dibuka: '+(e.message||e.name));
+  }finally{camBusy=false}
 }
 function stopCam(){
+  camGen++;clearTimeout(watch);
   cancelAnimationFrame(raf);
-  if(stream){stream.getTracks().forEach(t=>t.stop());stream=null}
+  if(stream){stream.getTracks().forEach(t=>{t.onended=null;t.stop()});stream=null}
+  const v=$('#vid');v.pause();v.srcObject=null;
   $('#camoff').style.display='';$('#camBtn').textContent='Mulai scan';
 }
-$('#camBtn').onclick=()=>{unlockAudio();return stream?stopCam():startCam()};
+document.addEventListener('visibilitychange',()=>{if(document.hidden&&stream)stopCam()});
+$('#camBtn').onclick=()=>{unlockAudio();if(camBusy)return;stream?stopCam():startCam()};
 $('#simBtn').onclick=()=>{
   unlockAudio();
   const s=sess(),list=byClass(s.kelas);if(!list.length)return toast('Kelas kosong');
@@ -377,6 +400,17 @@ $('#addF').onsubmit=e=>{
   e.preventDefault();
   db.students.push({id:'s'+Date.now().toString(36),nama:$('#a-nama').value.trim(),nis:$('#a-nis').value.trim(),kelas:$('#a-kelas').value.trim().toUpperCase(),token:rnd()});
   save();e.target.reset();$('#a-kelas').value='4A';initSel();renderSiswa();toast('Siswa ditambahkan');
+};
+$('#resetSes').onclick=()=>{
+  const s=sess(),n=db.records.filter(r=>r.kelas===s.kelas&&r.date===s.tgl&&r.mapel===s.mapel&&r.jam===s.jam).length;
+  if(!n)return toast('Sesi ini belum ada absen');
+  if(!confirm(`Hapus ${n} catatan absen sesi ini (Kelas ${s.kelas}, ${s.mapel}, Jam ${s.jam}, ${s.tgl})?`))return;
+  db.records=db.records.filter(r=>!(r.kelas===s.kelas&&r.date===s.tgl&&r.mapel===s.mapel&&r.jam===s.jam));
+  save();lastTok='';$('#result').className='';$('#result').innerHTML='<span class="mut">Sesi direset. Silakan scan lagi.</span>';updScanStat();toast('Absen sesi ini dihapus');
+};
+$('#resetAbs').onclick=()=>{
+  if(!db.records.length)return toast('Belum ada data kehadiran');
+  if(confirm(`Hapus SEMUA ${db.records.length} catatan kehadiran? Data siswa tetap ada.`)){db.records=[];save();lastTok='';updScanStat();toast('Semua kehadiran dihapus')}
 };
 $('#resetBtn').onclick=()=>{if(confirm('Kembalikan ke data contoh? Semua perubahan dan absensi dihapus.')){db=seed();save();initSel();renderSiswa();toast('Data demo direset')}};
 
