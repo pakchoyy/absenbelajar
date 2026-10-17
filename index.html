@@ -36,6 +36,11 @@ select,input[type=text],input[type=date]{width:100%;font:inherit;padding:10px;bo
 #scanbox video{width:100%;height:100%;object-fit:cover}
 #scanbox .frame{position:absolute;inset:18%;border:3px solid rgba(255,255,255,.85);border-radius:16px;pointer-events:none}
 #scanbox .off{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#cbd5d1;text-align:center;padding:20px}
+#flash{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;opacity:0;font-size:0}
+#flash.show{animation:fl .9s ease-out}
+#flash svg{width:46%;height:46%;filter:drop-shadow(0 4px 12px rgba(0,0,0,.5))}
+#flash::before{content:"";position:absolute;inset:0;background:var(--fc,#16a34a);opacity:.35}
+@keyframes fl{0%{opacity:0;transform:scale(.6)}15%{opacity:1;transform:scale(1.05)}70%{opacity:1;transform:scale(1)}100%{opacity:0;transform:scale(1)}}
 #result{margin:12px auto 0;max-width:420px;padding:14px;border-radius:var(--r);text-align:center;border:2px solid var(--line);background:var(--card);min-height:84px}
 #result .nm{font-size:1.3rem;font-weight:700}
 #result.ok{border-color:var(--H)}#result.dup{border-color:var(--S)}#result.bad{border-color:var(--A)}
@@ -88,7 +93,7 @@ td.c,th.c{text-align:center}
     </div>
   </div>
   <div class="card">
-    <div id="scanbox"><video id="vid" playsinline muted></video><div class="frame"></div><div class="off" id="camoff">Kamera belum aktif</div></div>
+    <div id="scanbox"><video id="vid" playsinline muted></video><div class="frame"></div><div id="flash"></div><div class="off" id="camoff">Kamera belum aktif</div></div>
     <div class="bar" style="justify-content:center">
       <button class="btn" id="camBtn">Mulai scan</button>
       <button class="btn ghost" id="simBtn">Simulasi scan</button>
@@ -241,7 +246,28 @@ function setStatus(st,s,status,src){
 
 /* ---------- scan ---------- */
 let stream=null,raf=0,lastTok='',lastAt=0,ctx2d=null;
-function beep(ok){try{const a=new (window.AudioContext||webkitAudioContext)(),o=a.createOscillator(),g=a.createGain();o.frequency.value=ok?880:240;g.gain.value=.08;o.connect(g);g.connect(a.destination);o.start();o.stop(a.currentTime+.12)}catch(e){}if(navigator.vibrate)navigator.vibrate(ok?60:[80,60,80])}
+let AC=null;
+function unlockAudio(){try{AC=AC||new (window.AudioContext||webkitAudioContext)();if(AC.state==='suspended')AC.resume()}catch(e){}}
+function tone(f,t0,d,vol){const o=AC.createOscillator(),g=AC.createGain();o.type='sine';o.frequency.value=f;
+  g.gain.setValueAtTime(0,AC.currentTime+t0);g.gain.linearRampToValueAtTime(vol,AC.currentTime+t0+.01);g.gain.exponentialRampToValueAtTime(.001,AC.currentTime+t0+d);
+  o.connect(g);g.connect(AC.destination);o.start(AC.currentTime+t0);o.stop(AC.currentTime+t0+d+.02)}
+const ICON={ok:['#16a34a','<path d="M20 52l22 22 38-44" fill="none" stroke="#fff" stroke-width="14" stroke-linecap="round" stroke-linejoin="round"/>'],
+  dup:['#d97706','<path d="M50 20v36M50 74v6" fill="none" stroke="#fff" stroke-width="14" stroke-linecap="round"/>'],
+  bad:['#dc2626','<path d="M28 28l44 44M72 28L28 72" fill="none" stroke="#fff" stroke-width="14" stroke-linecap="round"/>']};
+function flash(kind){
+  const f=$('#flash');f.style.setProperty('--fc',ICON[kind][0]);
+  f.innerHTML='<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="46" fill="'+ICON[kind][0]+'"/>'+ICON[kind][1]+'</svg>';
+  f.classList.remove('show');void f.offsetWidth;f.classList.add('show');
+}
+function beep(kind){
+  kind=kind===true?'ok':kind===false?'bad':kind;
+  flash(kind);
+  try{unlockAudio();
+    if(kind==='ok'){tone(988,0,.12,.5);tone(1319,.11,.22,.5)}
+    else if(kind==='dup'){tone(660,0,.12,.4);tone(660,.18,.12,.4)}
+    else{tone(220,0,.18,.5);tone(165,.2,.3,.5)}}catch(e){}
+  if(navigator.vibrate)navigator.vibrate(kind==='ok'?60:[80,60,80]);
+}
 function updScanStat(){
   const s=sess(),all=byClass(s.kelas),done=all.filter(x=>findRec(x.id,s)).length;
   $('#scanStat').textContent=`Tercatat ${done} dari ${all.length} siswa Kelas ${s.kelas}`;
@@ -253,7 +279,7 @@ function handleToken(txt){
   if(!st){box.className='bad';box.innerHTML='<div class="nm">QR tidak dikenal</div><span class="mut">Bukan kartu siswa terdaftar (atau token sudah diganti).</span>';beep(false);return}
   if(st.kelas!==s.kelas){box.className='bad';box.innerHTML=`<div class="nm">${esc(st.nama)}</div><span class="mut">Siswa Kelas ${esc(st.kelas)}, sesi ini Kelas ${esc(s.kelas)}. Tidak dicatat.</span>`;beep(false);return}
   const ex=findRec(st.id,s);
-  if(ex){box.className='dup';box.innerHTML=`<div class="nm">${esc(st.nama)}</div>Sudah tercatat <span class="pill ${ex.status}">${ST[ex.status]}</span> pukul ${ex.time}`;beep(false);return}
+  if(ex){box.className='dup';box.innerHTML=`<div class="nm">${esc(st.nama)}</div>Sudah tercatat <span class="pill ${ex.status}">${ST[ex.status]}</span> pukul ${ex.time}`;beep('dup');return}
   setStatus(st,s,'H','scan');
   box.className='ok';box.innerHTML=`<div class="nm">${esc(st.nama)}</div>Kelas ${esc(st.kelas)} · <span class="pill H">Hadir</span>`;beep(true);updScanStat();
 }
@@ -281,8 +307,9 @@ function stopCam(){
   if(stream){stream.getTracks().forEach(t=>t.stop());stream=null}
   $('#camoff').style.display='';$('#camBtn').textContent='Mulai scan';
 }
-$('#camBtn').onclick=()=>stream?stopCam():startCam();
+$('#camBtn').onclick=()=>{unlockAudio();return stream?stopCam():startCam()};
 $('#simBtn').onclick=()=>{
+  unlockAudio();
   const s=sess(),list=byClass(s.kelas);if(!list.length)return toast('Kelas kosong');
   const todo=list.filter(x=>!findRec(x.id,s));
   const pick=(todo.length?todo:list)[Math.random()*(todo.length||list.length)|0];
