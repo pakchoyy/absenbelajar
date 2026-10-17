@@ -197,7 +197,7 @@ const byClass=k=>db.students.filter(s=>s.kelas===k).sort((a,b)=>a.nama.localeCom
 const libs={};
 function load(url){return libs[url]||(libs[url]=new Promise((ok,no)=>{const s=document.createElement('script');s.src=url;s.onload=ok;s.onerror=()=>{delete libs[url];no(new Error('Gagal memuat '+url))};document.head.appendChild(s)}))}
 const L={qr:'https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js',
-  jsqr:'https://cdnjs.cloudflare.com/ajax/libs/jsQR/1.4.0/jsQR.min.js',
+  jsqr:'https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js',
   xlsx:'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js'};
 
 /* ---------- tabs ---------- */
