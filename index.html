@@ -1,0 +1,407 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#0f766e">
+<title>Absensi QR Siswa SD (Demo)</title>
+<style>
+:root{--bg:#f4f7f6;--card:#fff;--ink:#14231f;--mut:#5b6b66;--line:#dbe4e1;--pri:#0f766e;--pri2:#0b5a54;
+--H:#16a34a;--I:#2563eb;--S:#d97706;--A:#dc2626;--r:12px}
+@media (prefers-color-scheme:dark){:root{--bg:#0e1614;--card:#16211e;--ink:#e6f0ed;--mut:#9bb0aa;--line:#26352f;--pri:#2dd4bf;--pri2:#5eead4}}
+*{box-sizing:border-box}
+body{margin:0;font:16px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--ink);padding-bottom:76px}
+header{background:var(--pri);color:#fff;padding:12px 16px;display:flex;align-items:center;gap:10px;position:sticky;top:0;z-index:5}
+@media (prefers-color-scheme:dark){header{color:#06231f}}
+header h1{font-size:1.05rem;margin:0;flex:1}
+header .tag{font-size:.7rem;background:rgba(255,255,255,.22);padding:2px 8px;border-radius:99px}
+main{max-width:860px;margin:0 auto;padding:16px}
+nav{position:fixed;bottom:0;left:0;right:0;background:var(--card);border-top:1px solid var(--line);display:flex;z-index:6}
+nav button{flex:1;background:none;border:0;padding:10px 2px 12px;font:inherit;font-size:.78rem;color:var(--mut);cursor:pointer;min-height:56px}
+nav button .ic{display:block;font-size:1.3rem;line-height:1.1}
+nav button[aria-selected=true]{color:var(--pri);font-weight:700;box-shadow:inset 0 3px 0 var(--pri)}
+section{display:none}section.on{display:block}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:14px;margin-bottom:14px}
+h2{font-size:1.1rem;margin:0 0 10px}
+label{display:block;font-size:.8rem;color:var(--mut);margin-bottom:3px}
+select,input[type=text],input[type=date]{width:100%;font:inherit;padding:10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);min-height:44px}
+.row{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px}
+.btn{font:inherit;border:0;border-radius:10px;padding:11px 16px;background:var(--pri);color:#fff;cursor:pointer;min-height:44px;font-weight:600}
+@media (prefers-color-scheme:dark){.btn{color:#06231f}}
+.btn.ghost{background:transparent;color:var(--pri);border:1px solid var(--pri)}
+.btn.danger{background:var(--A);color:#fff}
+.btn:disabled{opacity:.5}
+.bar{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+#scanbox{position:relative;background:#000;border-radius:var(--r);overflow:hidden;aspect-ratio:1/1;max-width:420px;margin:0 auto}
+#scanbox video{width:100%;height:100%;object-fit:cover}
+#scanbox .frame{position:absolute;inset:18%;border:3px solid rgba(255,255,255,.85);border-radius:16px;pointer-events:none}
+#scanbox .off{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#cbd5d1;text-align:center;padding:20px}
+#result{margin:12px auto 0;max-width:420px;padding:14px;border-radius:var(--r);text-align:center;border:2px solid var(--line);background:var(--card);min-height:84px}
+#result .nm{font-size:1.3rem;font-weight:700}
+#result.ok{border-color:var(--H)}#result.dup{border-color:var(--S)}#result.bad{border-color:var(--A)}
+.pill{display:inline-block;padding:2px 10px;border-radius:99px;color:#fff;font-size:.8rem;font-weight:700}
+.pill.H{background:var(--H)}.pill.I{background:var(--I)}.pill.S{background:var(--S)}.pill.A{background:var(--A)}
+.stu{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--line)}
+.stu:last-child{border:0}
+.stu .n{flex:1;min-width:0}.stu .n small{display:block;color:var(--mut)}
+.seg{display:flex;gap:4px}
+.seg button{width:42px;height:42px;border-radius:8px;border:1px solid var(--line);background:var(--bg);color:var(--ink);font-weight:700;cursor:pointer}
+.seg button.on.H{background:var(--H);color:#fff;border-color:var(--H)}
+.seg button.on.I{background:var(--I);color:#fff;border-color:var(--I)}
+.seg button.on.S{background:var(--S);color:#fff;border-color:var(--S)}
+.seg button.on.A{background:var(--A);color:#fff;border-color:var(--A)}
+table{width:100%;border-collapse:collapse;font-size:.9rem}
+th,td{padding:7px 6px;border-bottom:1px solid var(--line);text-align:left}
+th{color:var(--mut);font-size:.75rem;text-transform:uppercase}
+td.c,th.c{text-align:center}
+.wrap{overflow-x:auto}
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px}
+.idc{background:#fff;color:#111;border:1px solid #bbb;border-radius:10px;padding:10px;text-align:center;break-inside:avoid}
+.idc canvas{width:100%;max-width:170px;height:auto}
+.idc .s{font-weight:700;font-size:.95rem}.idc .k{font-size:.8rem;color:#444}
+.idc .sch{font-size:.7rem;letter-spacing:.04em;color:#0f766e;font-weight:700;text-transform:uppercase}
+.mut{color:var(--mut);font-size:.85rem}
+.chips{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}
+.chip{padding:4px 12px;border-radius:99px;font-size:.85rem;font-weight:700;color:#fff}
+#toast{position:fixed;left:50%;bottom:90px;transform:translateX(-50%);background:#111;color:#fff;padding:10px 16px;border-radius:10px;opacity:0;transition:opacity .2s;z-index:9;pointer-events:none;max-width:90vw}
+#toast.on{opacity:1}
+@media print{
+  body{background:#fff;padding:0}header,nav,#cardtools,.noprint,section:not(#t-kartu){display:none!important}
+  main{max-width:none;padding:0}.card{border:0;padding:0}
+  .cards{grid-template-columns:repeat(3,1fr);gap:6mm}.idc{border:1px solid #888}
+}
+</style>
+</head>
+<body>
+<header><h1>Absensi QR Siswa SD</h1><span class="tag">DEMO · data di browser ini</span></header>
+<main>
+
+<!-- SCAN -->
+<section id="t-scan" class="on">
+  <div class="card">
+    <h2>Sesi pelajaran</h2>
+    <div class="row">
+      <div><label for="s-kelas">Kelas</label><select id="s-kelas"></select></div>
+      <div><label for="s-mapel">Mapel</label><select id="s-mapel"></select></div>
+      <div><label for="s-jam">Jam ke-</label><select id="s-jam"></select></div>
+      <div><label for="s-tgl">Tanggal</label><input type="date" id="s-tgl"></div>
+    </div>
+  </div>
+  <div class="card">
+    <div id="scanbox"><video id="vid" playsinline muted></video><div class="frame"></div><div class="off" id="camoff">Kamera belum aktif</div></div>
+    <div class="bar" style="justify-content:center">
+      <button class="btn" id="camBtn">Mulai scan</button>
+      <button class="btn ghost" id="simBtn">Simulasi scan</button>
+    </div>
+    <div id="result"><span class="mut">Arahkan kamera ke kartu QR siswa.</span></div>
+    <p class="mut" id="scanStat" style="text-align:center"></p>
+    <p class="mut">Kamera butuh HTTPS (atau localhost). Tanpa kamera, pakai “Simulasi scan” untuk peragaan.</p>
+  </div>
+</section>
+
+<!-- MANUAL -->
+<section id="t-manual">
+  <div class="card">
+    <h2>Input manual</h2>
+    <p class="mut" id="m-ctx"></p>
+    <div class="bar noprint" style="margin:0 0 6px">
+      <button class="btn ghost" id="allH">Tandai semua yang belum: Hadir</button>
+    </div>
+    <div id="m-list"></div>
+    <p class="mut">H = Hadir · I = Izin · S = Sakit · A = Alpa. Sesi (kelas, mapel, jam, tanggal) mengikuti tab Scan.</p>
+  </div>
+</section>
+
+<!-- REKAP -->
+<section id="t-rekap">
+  <div class="card">
+    <h2>Rekap</h2>
+    <div class="row">
+      <div><label for="r-kelas">Kelas</label><select id="r-kelas"></select></div>
+      <div><label for="r-mapel">Mapel</label><select id="r-mapel"></select></div>
+      <div><label for="r-dari">Dari</label><input type="date" id="r-dari"></div>
+      <div><label for="r-sampai">Sampai</label><input type="date" id="r-sampai"></div>
+    </div>
+    <div class="chips" id="r-chips"></div>
+    <div class="wrap"><table id="r-tbl"></table></div>
+    <div class="bar"><button class="btn" id="xlsBtn">Ekspor Excel</button></div>
+  </div>
+</section>
+
+<!-- SISWA -->
+<section id="t-siswa">
+  <div class="card">
+    <h2>Daftar siswa</h2>
+    <form id="addF" class="row" style="align-items:end">
+      <div><label for="a-nama">Nama</label><input type="text" id="a-nama" required></div>
+      <div><label for="a-nis">NIS</label><input type="text" id="a-nis" required></div>
+      <div><label for="a-kelas">Kelas</label><input type="text" id="a-kelas" value="4A" required></div>
+      <button class="btn" type="submit">Tambah</button>
+    </form>
+    <div id="sw-list" style="margin-top:10px"></div>
+    <div class="bar"><button class="btn danger" id="resetBtn">Reset data demo</button></div>
+  </div>
+</section>
+
+<!-- KARTU -->
+<section id="t-kartu">
+  <div class="card" id="cardtools">
+    <h2>Kartu QR berlogo</h2>
+    <div class="row">
+      <div><label for="c-kelas">Kelas</label><select id="c-kelas"></select></div>
+      <div><label for="c-logo">Logo sekolah (PNG)</label><input type="file" id="c-logo" accept="image/*"></div>
+      <div><label for="c-nama">Nama sekolah</label><input type="text" id="c-nama"></div>
+    </div>
+    <div class="bar"><button class="btn" id="printBtn">Cetak kartu</button><button class="btn ghost" id="logoReset">Logo bawaan</button></div>
+    <p class="mut">QR memakai token acak (bukan NIS) dan koreksi error tinggi, sehingga tetap terbaca dengan logo di tengah.</p>
+  </div>
+  <div class="cards" id="cards"></div>
+</section>
+
+</main>
+
+<nav role="tablist">
+  <button role="tab" data-t="scan" aria-selected="true"><span class="ic">📷</span>Scan</button>
+  <button role="tab" data-t="manual" aria-selected="false"><span class="ic">✍️</span>Manual</button>
+  <button role="tab" data-t="rekap" aria-selected="false"><span class="ic">📊</span>Rekap</button>
+  <button role="tab" data-t="siswa" aria-selected="false"><span class="ic">👥</span>Siswa</button>
+  <button role="tab" data-t="kartu" aria-selected="false"><span class="ic">🪪</span>Kartu</button>
+</nav>
+<div id="toast" role="status"></div>
+
+<script>
+const $=s=>document.querySelector(s);
+const ST={H:'Hadir',I:'Izin',S:'Sakit',A:'Alpa'};
+const MAPEL=['Matematika','Bahasa Indonesia','IPAS','PJOK','Bahasa Inggris','Seni Budaya','Pendidikan Agama'];
+const KEY='absenqr-demo-v1';
+const today=()=>{const d=new Date();return new Date(d-d.getTimezoneOffset()*6e4).toISOString().slice(0,10)};
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const rnd=()=>{const a=new Uint8Array(8);crypto.getRandomValues(a);return [...a].map(b=>b.toString(36).padStart(2,'0')).join('').slice(0,12)};
+
+/* ---------- data ---------- */
+function seed(){
+  const names=[['Ahmad Fauzi','4A'],['Bunga Lestari','4A'],['Cahyo Pratama','4A'],['Dewi Anggraini','4A'],['Eka Saputra','4A'],['Fitri Handayani','4A'],
+    ['Gilang Ramadhan','4B'],['Hana Permata','4B'],['Indra Wijaya','4B'],['Juwita Sari','4B'],['Kevin Mahendra','4B'],['Laras Ayu','4B']];
+  return {students:names.map(([nama,kelas],i)=>({id:'s'+(i+1),nis:String(2025001+i),nama,kelas,token:rnd()})),
+    records:[],logo:null,school:'SD Negeri Contoh'};
+}
+let db;
+try{db=JSON.parse(localStorage.getItem(KEY))}catch(e){}
+if(!db||!db.students)db=seed();
+const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(db))}catch(e){toast('Penyimpanan penuh / diblokir')}};
+function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('on');clearTimeout(toast.t);toast.t=setTimeout(()=>t.classList.remove('on'),2200)}
+const classes=()=>[...new Set(db.students.map(s=>s.kelas))].sort();
+const byClass=k=>db.students.filter(s=>s.kelas===k).sort((a,b)=>a.nama.localeCompare(b.nama));
+
+/* ---------- lazy script loader ---------- */
+const libs={};
+function load(url){return libs[url]||(libs[url]=new Promise((ok,no)=>{const s=document.createElement('script');s.src=url;s.onload=ok;s.onerror=()=>{delete libs[url];no(new Error('Gagal memuat '+url))};document.head.appendChild(s)}))}
+const L={qr:'https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js',
+  jsqr:'https://cdnjs.cloudflare.com/ajax/libs/jsQR/1.4.0/jsQR.min.js',
+  xlsx:'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js'};
+
+/* ---------- tabs ---------- */
+function tab(t){
+  document.querySelectorAll('section').forEach(s=>s.classList.toggle('on',s.id==='t-'+t));
+  document.querySelectorAll('nav button').forEach(b=>b.setAttribute('aria-selected',b.dataset.t===t));
+  if(t!=='scan')stopCam();
+  if(t==='manual')renderManual();
+  if(t==='rekap')renderRekap();
+  if(t==='siswa')renderSiswa();
+  if(t==='kartu')renderCards();
+  scrollTo(0,0);
+}
+document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>tab(b.dataset.t));
+
+/* ---------- session selectors ---------- */
+function fillSelect(el,opts,val){el.innerHTML=opts.map(o=>`<option value="${esc(o[0])}">${esc(o[1])}</option>`).join('');if(val!=null&&opts.some(o=>o[0]==val))el.value=val}
+function initSel(){
+  const ks=classes().map(k=>[k,'Kelas '+k]);
+  const cur={k:$('#s-kelas').value,r:$('#r-kelas').value,c:$('#c-kelas').value};
+  fillSelect($('#s-kelas'),ks,cur.k);
+  fillSelect($('#r-kelas'),[['','Semua kelas'],...ks],cur.r);
+  fillSelect($('#c-kelas'),[['','Semua kelas'],...ks],cur.c);
+  if(!$('#s-mapel').options.length){
+    fillSelect($('#s-mapel'),MAPEL.map(m=>[m,m]));
+    fillSelect($('#r-mapel'),[['','Semua mapel'],...MAPEL.map(m=>[m,m])]);
+    fillSelect($('#s-jam'),[1,2,3,4,5,6,7,8].map(j=>[j,'Jam '+j]));
+    $('#s-tgl').value=today();
+  }
+}
+const sess=()=>({kelas:$('#s-kelas').value,mapel:$('#s-mapel').value,jam:+$('#s-jam').value,tgl:$('#s-tgl').value});
+const findRec=(sid,s)=>db.records.find(r=>r.sid===sid&&r.date===s.tgl&&r.mapel===s.mapel&&r.jam===s.jam);
+function setStatus(st,s,status,src){
+  let r=findRec(st.id,s);
+  const time=new Date().toTimeString().slice(0,8);
+  if(r){r.status=status;r.src=src;r.time=time}
+  else db.records.push({sid:st.id,kelas:st.kelas,date:s.tgl,mapel:s.mapel,jam:s.jam,status,src,time,by:'Guru Demo'});
+  save();
+}
+['s-kelas','s-mapel','s-jam','s-tgl'].forEach(id=>$('#'+id).onchange=()=>{updScanStat();if($('#t-manual').classList.contains('on'))renderManual()});
+
+/* ---------- scan ---------- */
+let stream=null,raf=0,lastTok='',lastAt=0,ctx2d=null;
+function beep(ok){try{const a=new (window.AudioContext||webkitAudioContext)(),o=a.createOscillator(),g=a.createGain();o.frequency.value=ok?880:240;g.gain.value=.08;o.connect(g);g.connect(a.destination);o.start();o.stop(a.currentTime+.12)}catch(e){}if(navigator.vibrate)navigator.vibrate(ok?60:[80,60,80])}
+function updScanStat(){
+  const s=sess(),all=byClass(s.kelas),done=all.filter(x=>findRec(x.id,s)).length;
+  $('#scanStat').textContent=`Tercatat ${done} dari ${all.length} siswa Kelas ${s.kelas}`;
+}
+function handleToken(txt){
+  const s=sess(),box=$('#result');
+  const m=/^ABSEN:(\w+)$/.exec(txt.trim());
+  const st=m&&db.students.find(x=>x.token===m[1]);
+  if(!st){box.className='bad';box.innerHTML='<div class="nm">QR tidak dikenal</div><span class="mut">Bukan kartu siswa terdaftar (atau token sudah diganti).</span>';beep(false);return}
+  if(st.kelas!==s.kelas){box.className='bad';box.innerHTML=`<div class="nm">${esc(st.nama)}</div><span class="mut">Siswa Kelas ${esc(st.kelas)}, sesi ini Kelas ${esc(s.kelas)}. Tidak dicatat.</span>`;beep(false);return}
+  const ex=findRec(st.id,s);
+  if(ex){box.className='dup';box.innerHTML=`<div class="nm">${esc(st.nama)}</div>Sudah tercatat <span class="pill ${ex.status}">${ST[ex.status]}</span> pukul ${ex.time}`;beep(false);return}
+  setStatus(st,s,'H','scan');
+  box.className='ok';box.innerHTML=`<div class="nm">${esc(st.nama)}</div>Kelas ${esc(st.kelas)} · <span class="pill H">Hadir</span>`;beep(true);updScanStat();
+}
+async function startCam(){
+  try{
+    await load(L.jsqr);
+    stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'},width:{ideal:640}},audio:false});
+  }catch(e){toast('Kamera tidak bisa dibuka: '+(e.message||e.name));return}
+  const v=$('#vid');v.srcObject=stream;await v.play();
+  $('#camoff').style.display='none';$('#camBtn').textContent='Berhenti';
+  const c=document.createElement('canvas');ctx2d=c.getContext('2d',{willReadFrequently:true});
+  let t0=0;
+  const tick=t=>{
+    raf=requestAnimationFrame(tick);
+    if(t-t0<120||v.readyState<2)return;t0=t;
+    const w=c.width=v.videoWidth/1.5|0,h=c.height=v.videoHeight/1.5|0;
+    ctx2d.drawImage(v,0,0,w,h);
+    const r=jsQR(ctx2d.getImageData(0,0,w,h).data,w,h,{inversionAttempts:'dontInvert'});
+    if(r&&r.data){const n=Date.now();if(r.data!==lastTok||n-lastAt>3000){lastTok=r.data;lastAt=n;handleToken(r.data)}}
+  };
+  raf=requestAnimationFrame(tick);
+}
+function stopCam(){
+  cancelAnimationFrame(raf);
+  if(stream){stream.getTracks().forEach(t=>t.stop());stream=null}
+  $('#camoff').style.display='';$('#camBtn').textContent='Mulai scan';
+}
+$('#camBtn').onclick=()=>stream?stopCam():startCam();
+$('#simBtn').onclick=()=>{
+  const s=sess(),list=byClass(s.kelas);if(!list.length)return toast('Kelas kosong');
+  const todo=list.filter(x=>!findRec(x.id,s));
+  const pick=(todo.length?todo:list)[Math.random()*(todo.length||list.length)|0];
+  handleToken('ABSEN:'+pick.token);
+};
+
+/* ---------- manual ---------- */
+function renderManual(){
+  const s=sess();
+  $('#m-ctx').textContent=`Kelas ${s.kelas} · ${s.mapel} · Jam ${s.jam} · ${s.tgl}`;
+  $('#m-list').innerHTML=byClass(s.kelas).map(st=>{
+    const r=findRec(st.id,s);
+    return `<div class="stu"><div class="n">${esc(st.nama)}<small>NIS ${esc(st.nis)}${r?' · '+(r.src==='scan'?'scan':'manual')+' '+r.time:''}</small></div>
+    <div class="seg" data-id="${st.id}">${Object.keys(ST).map(k=>`<button class="${k}${r&&r.status===k?' on':''}" data-s="${k}" aria-label="${ST[k]}">${k}</button>`).join('')}</div></div>`}).join('')||'<p class="mut">Belum ada siswa di kelas ini.</p>';
+}
+$('#m-list').onclick=e=>{
+  const b=e.target.closest('button[data-s]');if(!b)return;
+  const st=db.students.find(x=>x.id===b.parentNode.dataset.id);
+  setStatus(st,sess(),b.dataset.s,'manual');renderManual();updScanStat();
+};
+$('#allH').onclick=()=>{const s=sess();byClass(s.kelas).forEach(st=>{if(!findRec(st.id,s))setStatus(st,s,'H','manual')});renderManual();updScanStat()};
+
+/* ---------- rekap ---------- */
+function filtered(){
+  const k=$('#r-kelas').value,m=$('#r-mapel').value,d1=$('#r-dari').value,d2=$('#r-sampai').value;
+  return db.records.filter(r=>(!k||r.kelas===k)&&(!m||r.mapel===m)&&(!d1||r.date>=d1)&&(!d2||r.date<=d2));
+}
+function summary(){
+  const recs=filtered(),k=$('#r-kelas').value;
+  const studs=(k?byClass(k):[...db.students].sort((a,b)=>a.kelas.localeCompare(b.kelas)||a.nama.localeCompare(b.nama)));
+  return studs.map(st=>{const c={H:0,I:0,S:0,A:0};recs.forEach(r=>{if(r.sid===st.id)c[r.status]++});
+    const tot=c.H+c.I+c.S+c.A;return {st,...c,tot,pct:tot?Math.round(c.H/tot*100):null}});
+}
+function renderRekap(){
+  const rows=summary(),tot={H:0,I:0,S:0,A:0};rows.forEach(r=>Object.keys(tot).forEach(k=>tot[k]+=r[k]));
+  $('#r-chips').innerHTML=Object.keys(ST).map(k=>`<span class="chip" style="background:var(--${k})">${ST[k]} ${tot[k]}</span>`).join('');
+  $('#r-tbl').innerHTML=`<tr><th>Nama</th><th>Kls</th><th class="c">H</th><th class="c">I</th><th class="c">S</th><th class="c">A</th><th class="c">%H</th></tr>`+
+    rows.map(r=>`<tr><td>${esc(r.st.nama)}</td><td>${esc(r.st.kelas)}</td><td class="c">${r.H}</td><td class="c">${r.I}</td><td class="c">${r.S}</td><td class="c">${r.A}</td><td class="c">${r.pct==null?'–':r.pct+'%'}</td></tr>`).join('');
+}
+['r-kelas','r-mapel','r-dari','r-sampai'].forEach(id=>$('#'+id).onchange=renderRekap);
+$('#xlsBtn').onclick=async()=>{
+  try{await load(L.xlsx)}catch(e){return toast(e.message)}
+  const sum=summary().map(r=>({Nama:r.st.nama,NIS:r.st.nis,Kelas:r.st.kelas,Hadir:r.H,Izin:r.I,Sakit:r.S,Alpa:r.A,'% Hadir':r.pct==null?'':r.pct}));
+  const det=filtered().map(r=>{const st=db.students.find(x=>x.id===r.sid)||{};return {Tanggal:r.date,Kelas:r.kelas,Mapel:r.mapel,'Jam ke':r.jam,Nama:st.nama,NIS:st.nis,Status:ST[r.status],Sumber:r.src,Waktu:r.time,Pencatat:r.by}})
+    .sort((a,b)=>a.Tanggal.localeCompare(b.Tanggal)||a['Jam ke']-b['Jam ke']||a.Nama.localeCompare(b.Nama));
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(sum),'Rekap');
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(det.length?det:[{Info:'Belum ada data'}]),'Detail');
+  XLSX.writeFile(wb,`rekap-absensi-${today()}.xlsx`);
+};
+
+/* ---------- siswa ---------- */
+function renderSiswa(){
+  $('#sw-list').innerHTML=[...db.students].sort((a,b)=>a.kelas.localeCompare(b.kelas)||a.nama.localeCompare(b.nama)).map(s=>
+    `<div class="stu"><div class="n">${esc(s.nama)}<small>NIS ${esc(s.nis)} · Kelas ${esc(s.kelas)}</small></div>
+     <button class="btn ghost" data-ren="${s.id}" title="Ganti token QR (kartu hilang)">Ganti QR</button>
+     <button class="btn ghost" data-del="${s.id}" aria-label="Hapus">✕</button></div>`).join('');
+}
+$('#sw-list').onclick=e=>{
+  const r=e.target.closest('[data-ren]'),d=e.target.closest('[data-del]');
+  if(r){const s=db.students.find(x=>x.id===r.dataset.ren);s.token=rnd();save();toast('Token baru dibuat. Cetak ulang kartu '+s.nama)}
+  if(d&&confirm('Hapus siswa ini beserta catatan absennya?')){db.students=db.students.filter(x=>x.id!==d.dataset.del);db.records=db.records.filter(x=>x.sid!==d.dataset.del);save();initSel();renderSiswa()}
+};
+$('#addF').onsubmit=e=>{
+  e.preventDefault();
+  db.students.push({id:'s'+Date.now().toString(36),nama:$('#a-nama').value.trim(),nis:$('#a-nis').value.trim(),kelas:$('#a-kelas').value.trim().toUpperCase(),token:rnd()});
+  save();e.target.reset();$('#a-kelas').value='4A';initSel();renderSiswa();toast('Siswa ditambahkan');
+};
+$('#resetBtn').onclick=()=>{if(confirm('Kembalikan ke data contoh? Semua perubahan dan absensi dihapus.')){db=seed();save();initSel();renderSiswa();toast('Data demo direset')}};
+
+/* ---------- kartu ---------- */
+let logoImg=null;
+function defaultLogo(){
+  const c=document.createElement('canvas');c.width=c.height=200;const g=c.getContext('2d');
+  g.fillStyle='#0f766e';g.beginPath();g.arc(100,100,96,0,7);g.fill();
+  g.strokeStyle='#fde68a';g.lineWidth=8;g.beginPath();g.arc(100,100,84,0,7);g.stroke();
+  g.fillStyle='#fff';g.font='bold 78px system-ui,sans-serif';g.textAlign='center';g.textBaseline='middle';g.fillText('SD',100,106);
+  return c;
+}
+function loadLogo(){
+  return new Promise(ok=>{if(!db.logo){logoImg=defaultLogo();return ok()}
+    const i=new Image();i.onload=()=>{logoImg=i;ok()};i.onerror=()=>{logoImg=defaultLogo();ok()};i.src=db.logo});
+}
+function drawQR(cv,text,size){
+  const qr=qrcode(0,'H');qr.addData(text);qr.make();
+  const n=qr.getModuleCount(),q=2,cell=size/(n+q*2);
+  cv.width=cv.height=size;const g=cv.getContext('2d');
+  g.fillStyle='#fff';g.fillRect(0,0,size,size);g.fillStyle='#000';
+  for(let r=0;r<n;r++)for(let c=0;c<n;c++)if(qr.isDark(r,c))g.fillRect(Math.floor((c+q)*cell),Math.floor((r+q)*cell),Math.ceil(cell),Math.ceil(cell));
+  const ls=size*.2,x=(size-ls)/2,pad=size*.015;
+  g.fillStyle='#fff';g.beginPath();g.arc(size/2,size/2,ls/2+pad,0,7);g.fill();
+  g.save();g.beginPath();g.arc(size/2,size/2,ls/2,0,7);g.clip();g.drawImage(logoImg,x,x,ls,ls);g.restore();
+}
+async function renderCards(){
+  try{await Promise.all([load(L.qr),loadLogo()])}catch(e){return toast(e.message)}
+  const k=$('#c-kelas').value,list=(k?byClass(k):[...db.students].sort((a,b)=>a.kelas.localeCompare(b.kelas)||a.nama.localeCompare(b.nama)));
+  $('#c-nama').value=db.school;
+  const box=$('#cards');box.innerHTML='';
+  list.forEach(s=>{
+    const d=document.createElement('div');d.className='idc';
+    d.innerHTML=`<div class="sch">${esc(db.school)}</div><canvas></canvas><div class="s">${esc(s.nama)}</div><div class="k">Kelas ${esc(s.kelas)} · NIS ${esc(s.nis)}</div>`;
+    box.appendChild(d);drawQR(d.querySelector('canvas'),'ABSEN:'+s.token,360);
+  });
+}
+$('#c-kelas').onchange=renderCards;
+$('#c-nama').onchange=e=>{db.school=e.target.value.trim()||db.school;save();renderCards()};
+$('#c-logo').onchange=e=>{
+  const f=e.target.files[0];if(!f)return;
+  const fr=new FileReader();fr.onload=()=>{
+    const i=new Image();i.onload=()=>{const c=document.createElement('canvas');c.width=c.height=240;const g=c.getContext('2d');
+      const m=Math.min(i.width,i.height);g.drawImage(i,(i.width-m)/2,(i.height-m)/2,m,m,0,0,240,240);
+      db.logo=c.toDataURL('image/png');save();renderCards()};i.src=fr.result};
+  fr.readAsDataURL(f);
+};
+$('#logoReset').onclick=()=>{db.logo=null;save();renderCards()};
+$('#printBtn').onclick=()=>print();
+
+/* ---------- init ---------- */
+initSel();updScanStat();
+</script>
+</body>
+</html>
